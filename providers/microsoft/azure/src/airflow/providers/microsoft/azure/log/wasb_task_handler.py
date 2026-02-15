@@ -87,10 +87,14 @@ class WasbRemoteLogIO(LoggingMixin):  # noqa: D101
     def read(self, relative_path, ti: RuntimeTI) -> tuple[LogSourceInfo, LogMessages | None]:
         messages = []
         logs = []
-        # TODO: fix this - "relative path" i.e currently REMOTE_BASE_LOG_FOLDER should start with "wasb"
-        # unlike others with shceme in URL itself to identify the correct handler.
-        # This puts limitations on ways users can name the base_path.
-        prefix = os.path.join(self.remote_base, relative_path)
+        if self.remote_base.startswith("wasb"):
+            prefix = os.path.join(self.remote_base, relative_path)
+        else:
+            # If not using wasb scheme, we assume it's a relative path in the container
+            # We use Path to join to handle slash correctly but we want string output
+            # and we want forward slashes for cloud storage
+            prefix = Path(self.remote_base).joinpath(relative_path).as_posix()
+
         blob_names = []
         try:
             blob_names = self.hook.get_blobs_list(container_name=self.wasb_container, prefix=prefix)
